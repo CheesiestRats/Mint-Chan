@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Mint_Chan
 {
-    internal class Functions
+    class Functions
     {
         internal static string pingAndChannelTagDetectFilterRegexStr = @"<[@#]\d{15,}>";
         public static string FilterPingsAndChannelTags(string inputMsg)
@@ -54,8 +54,8 @@ namespace Mint_Chan
                 {
                     break; // somehow escaped this function
                 }
-                return inputMsg;
             }
+            return inputMsg;
         }
 
         public static DateTime GetCurrentTime()
@@ -64,6 +64,16 @@ namespace Mint_Chan
             TimeZoneInfo easternTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
             DateTime currentEasternTime = TimeZoneInfo.ConvertTimeFromUtc(utcNow, easternTimeZone);
             return currentEasternTime;
+        }
+
+        public static string GetTimeOfDay(DateTime dateTime)
+        {
+            int hour = dateTime.Hour;
+
+            return hour >= 5 && hour < 12 ? "Morning" :
+                hour >= 12 && hour < 17 ? "Afternoon" :
+                hour >= 17 && hour < 21 ? "Evening" :
+                "Night";
         }
     }
 }
