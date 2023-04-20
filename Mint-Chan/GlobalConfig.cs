@@ -9,10 +9,10 @@ namespace Mint_Chan
 {
     internal class GlobalConfig
     {
-        internal static SocketGuild Server { get; set; }
-        internal static DiscordSocketClient Client { get; set; }
+        internal static SocketGuild? Server { get; set; }
+        internal static DiscordSocketClient? Client { get; set; }
 
-        internal static string token = "PUT_TOKEN_IN_HERE"; // Insert Bot Token Here
+        internal static string token = ""; // Insert Bot Token Here
         internal static ulong guildID = 0; // Insert Guild ID here.
     }
 }

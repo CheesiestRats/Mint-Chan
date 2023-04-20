@@ -26,10 +26,10 @@ namespace Mint_Chan
                 Task.Delay(1200);
             }
 
-            Program.botUserID = GlobalConfig.Client.CurrentUser.Id; // Bots user ID is detected and filled in automatically.
+            Program.botUserId = GlobalConfig.Client.CurrentUser.Id; // Bots user ID is detected and filled in automatically.
 
-            Program.botName = GlobalConfig.Server.GetUser(Program.botUserID).Nickname ??
-                              GlobalConfig.Server.GetUser(Program.botUserID).Username;
+            Program.botName = GlobalConfig.Server.GetUser(Program.botUserId).Nickname ??
+                              GlobalConfig.Server.GetUser(Program.botUserId).Username;
 
             return Task.CompletedTask;
         }
