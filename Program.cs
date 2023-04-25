@@ -188,7 +188,7 @@ namespace Mint_Chan
                         dalaiConnected = true;
                     };
 
-                    await Socket.ConnectAsync();
+                    Socket.ConnectAsync();
                 }
                 catch (Exception exception)
                 {
@@ -415,7 +415,7 @@ namespace Mint_Chan
 
                 // strip weird characters from nicknames, only leave letters and digits
                 string msgUserName;
-                if (user.Nickname != null)
+                if (user != null && user.Nickname != null)
                     msgUserName = user.Nickname;
                 else
                     msgUserName = Msg.Author.Username;
@@ -468,7 +468,7 @@ namespace Mint_Chan
                 // ->sallybot<- tell me a story
                 // how many miles is a kilometre ->sallybot?<-
                 // hey ->sallybot,<- are you there?
-                Match botNameMatch = Regex.Match(inputMsg, @$"(?:.*{botName.ToLower()}\?.*|{botName.ToLower()},.*)");
+                Match botNameMatch = Regex.Match(inputMsg, @$"(?:.*{botName}\?.*|{botName},.*)", RegexOptions.IgnoreCase);
 
                 if (Msg.MentionedUsers.Contains(GlobalConfig.Server.GetUser(botUserId))
                     || botNameMatch.Success // sallybot, or sallybot? query detected
@@ -627,15 +627,13 @@ namespace Mint_Chan
 
             // current input prompt string length
             int inputPromptLength = oobaboogaInputPrompt.Length - characterPrompt.Length;
-            // max allowed prompt length (you can go to like ~5000 ish before errors with oobabooga)
-            int maxLength = 5000;
             // amount to subtract from history if needed
-            int subtractAmount = maxLength - inputPromptLength;
+            int subtractAmount = inputPromptLength - maxChatHistoryStrLength;
 
-            if (inputPromptLength > maxLength
+            if (inputPromptLength > maxChatHistoryStrLength
                 && subtractAmount > 0) // make sure we aren't subtracting a negative value lol
             {
-                oobaboogaChatHistory = oobaboogaChatHistory.Substring(inputPromptLength - maxLength);
+                oobaboogaChatHistory = oobaboogaChatHistory.Substring(inputPromptLength - maxChatHistoryStrLength);
                 int indexOfNextChatMsg = oobaboogaChatHistory.IndexOf("\n[");
                 oobaboogaChatHistory = characterPrompt + // add character prompt to start of history
                                         oobaboogaChatHistory.Substring(indexOfNextChatMsg + 1); // start string at the next newline bracket + 1 to ignore the newline
@@ -669,7 +667,7 @@ namespace Mint_Chan
                 length_penalty = 1,
                 no_repeat_ngram_size = 1,
                 early_stopping = true,
-                custom_stopping_strings = new string[] { "\\n[", "\n[", "]:", "##", "###", "<noinput>", "\\end" },
+                stopping_strings = new string[] { "\n[", "\\n[", "]:", "\n#", "##", "###", "000000000000", "1111111111", "0.0.0.0.", "1.1.1.1.", "2.2.2.2.", "3.3.3.3.", "4.4.4.4.", "5.5.5.5.", "6.6.6.6.", "7.7.7.7.", "8.8.8.8.", "9.9.9.9.", "22222222222222", "33333333333333", "4444444444444444", "5555555555555", "66666666666666", "77777777777777", "888888888888888", "999999999999999999", "01010101", "0123456789", "<noinput>", "<nooutput>" },
                 seed = -1,
                 add_bos_token = true
             };
@@ -691,102 +689,29 @@ namespace Mint_Chan
             {
                 await Msg.Channel.TriggerTypingAsync(); // Typing...
 
-                // try other commonly used ports - flip flop between them with each failed attempt till it finds the right one
-                if (oobApiEndpoint == "/api/v1/generate") // new better API, use this with the oob arg --extensions api
+                if (oobApiEndpoint == "/api/v1/generate") // new better API, use this with the oob args --extensions api --notebook
                 {
                     var content = new StringContent(JsonConvert.SerializeObject(parameters), Encoding.UTF8, "application/json");
                     response = await httpClient.PostAsync(apiUrl, content);
                 }
+
+                // DEPRACATED old crap busted not-working default API. Use this Oobabooga .bat launch arg instead: --extensions api --notebook
                 else if (oobApiEndpoint == "/run/textgen") // old default API (busted but it kinda works)
                 {
                     var payload = JsonConvert.SerializeObject(new object[] { oobaboogaInputPrompt, parameters });
                     var content = new StringContent(JsonConvert.SerializeObject(new { data = new[] { payload } }), Encoding.UTF8, "application/json");
-                    response = await httpClient.PostAsync($"http://{oobServer}:{oobServerPort}/run/textgen", content); // try other commonly used port 7860
+                    response = await httpClient.PostAsync($"http://{oobServer}:{oobServerPort}/run/textgen", content);
                 }
             }
             catch
             {
-                Console.WriteLine($"Warning: Oobabooga server not found on port {oobServerPort}, trying alternates.");
-                try
-                {
-                    // try other commonly used ports - flip flop between them with each failed attempt till it finds the right one
-                    if (oobServerPort == 5000)
-                    {
-                        oobServerPort = 7861;
-                        oobApiEndpoint = "/run/textgen";
-                    }
-                    else if (oobServerPort == 7861)
-                        oobServerPort = 7860;
-                    else if (oobServerPort == 7860)
-                    {
-                        oobServerPort = 5000;
-                        oobApiEndpoint = "/api/v1/generate";
-                    }
+                Console.WriteLine($"Warning: Oobabooga server not found on port {oobServerPort}.\n" +
+                    $"In Oobabooga start-webui.bat, enable these args: --extensions api --notebook");
 
-                    try
-                    {
-                        // try other commonly used ports - flip flop between them with each failed attempt till it finds the right one
-                        if (oobApiEndpoint == "/api/v1/generate") // new better API, use this with the oob arg --extensions api
-                        {
-                            var content = new StringContent(JsonConvert.SerializeObject(parameters), Encoding.UTF8, "application/json");
-                            response = await httpClient.PostAsync(apiUrl, content);
-                        }
-                        else if (oobApiEndpoint == "/run/textgen") // old default API (busted but it kinda works)
-                        {
-                            var payload = JsonConvert.SerializeObject(new object[] { oobaboogaInputPrompt, parameters });
-                            var content = new StringContent(JsonConvert.SerializeObject(new { data = new[] { payload } }), Encoding.UTF8, "application/json");
-                            response = await httpClient.PostAsync($"http://{oobServer}:{oobServerPort}/run/textgen", content); // try other commonly used port 7860
-                        }
-                    }
-                    catch
-                    {
-                        // try other commonly used ports - flip flop between them with each failed attempt till it finds the right one
-                        if (oobServerPort == 5000)
-                        {
-                            oobServerPort = 7861;
-                            oobApiEndpoint = "/run/textgen";
-                        }
-                        else if (oobServerPort == 7861)
-                            oobServerPort = 7860;
-                        else if (oobServerPort == 7860)
-                        {
-                            oobServerPort = 5000;
-                            oobApiEndpoint = "/api/v1/generate";
-                        }
-
-                        try
-                        {
-                            // try other commonly used ports - flip flop between them with each failed attempt till it finds the right one
-                            if (oobApiEndpoint == "/api/v1/generate") // new better API, use this with the oob arg --extensions api
-                            {
-                                var content = new StringContent(JsonConvert.SerializeObject(parameters), Encoding.UTF8, "application/json");
-                                response = await httpClient.PostAsync(apiUrl, content);
-                            }
-                            else if (oobApiEndpoint == "/run/textgen") // old default API (busted but it kinda works)
-                            {
-                                var payload = JsonConvert.SerializeObject(new object[] { oobaboogaInputPrompt, parameters });
-                                var content = new StringContent(JsonConvert.SerializeObject(new { data = new[] { payload } }), Encoding.UTF8, "application/json");
-                                response = await httpClient.PostAsync($"http://{oobServer}:{oobServerPort}/run/textgen", content); // try other commonly used port 7860
-                            }
-                        }
-                        catch
-                        {
-                            Console.WriteLine($"Cannot find oobabooga server on backup port {oobServerPort}");
-                            if (dalaiConnected == false)
-                                Console.WriteLine($"No Dalai server connected");
-                            oobaboogaThinking = 0; // reset thinking flag after error
-                            return;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Super error detected on Oobabooga server, port {oobServerPort}: {ex}");
-                    if (dalaiConnected == false)
-                        Console.WriteLine($"No Dalai server connected");
-                    oobaboogaThinking = 0; // reset thinking flag after error
-                    return;
-                }
+                if (dalaiConnected == false)
+                    Console.WriteLine($"No Dalai server connected");
+                oobaboogaThinking = 0; // reset thinking flag after error
+                return;
             }
             if (response != null)
                 result = await response.Content.ReadAsStringAsync();
@@ -795,16 +720,8 @@ namespace Mint_Chan
             {
                 JsonDocument jsonDocument = JsonDocument.Parse(result);
 
-                if (oobApiEndpoint == "/api/v1/generate")
-                {
-                    JsonElement dataArray = jsonDocument.RootElement.GetProperty("results");
-                    botReply = dataArray[0].GetProperty("text").ToString(); // get just the response part of the json
-                }
-                else if (oobApiEndpoint == "/run/textgen")
-                {
-                    JsonElement dataArray = jsonDocument.RootElement.GetProperty("data");
-                    botReply = dataArray[0].GetString(); // get just the response part of the json
-                }
+                JsonElement dataArray = jsonDocument.RootElement.GetProperty("results");
+                botReply = dataArray[0].GetProperty("text").ToString(); // get just the response part of the json
             }
             else
             {
@@ -1290,12 +1207,7 @@ namespace Mint_Chan
 
                 if (userPrompt.Contains("selfie"))
                 {
-                    if (userPrompt.Contains(" with"))
-                        imgFormatString = " looking into the camera, a selfie with ";
-                    else if (userPrompt.Contains(" of"))
-                        imgFormatString = " looking into the camera, a selfie of ";
-                    else if (userPrompt.Contains(" next to"))
-                        imgFormatString = " looking into the camera, a selfie next to ";
+                    imgFormatString = ", looking into the camera, ";
                 }
                 else if (userPrompt.Contains("person")
                         || userPrompt.Contains("you as")
@@ -1303,27 +1215,27 @@ namespace Mint_Chan
                         || userPrompt.Contains("you cosplaying")
                         || userPrompt.Contains("yourself cosplaying"))
                     imgFormatString = "";   // don't say "standing next to (( A person ))" when it's just meant to be SallyBot
-                else if (userPrompt.Contains(" of "))
-                    imgFormatString = " She is next to";
-                else if (userPrompt.Contains(" of a"))
-                    imgFormatString = " She is next to";
-                else if (userPrompt.Contains(" with "))
-                    imgFormatString = " She is with";
+                //else if (userPrompt.Contains(" of "))
+                //    imgFormatString = ", she is next to ";
+                //else if (userPrompt.Contains(" of a"))
+                //    imgFormatString = ", she is next to ";
+                //else if (userPrompt.Contains(" with "))
+                //    imgFormatString = ", she is with ";
                 else if (userPrompt.Contains(" with a"))
-                    imgFormatString = " She has";
+                    imgFormatString = ", she has ";
                 else if (userPrompt.Contains(" of you with "))
-                    imgFormatString = " She is with";
+                    imgFormatString = ", she is with ";
                 else if (userPrompt.Contains(" of you with a"))
-                    imgFormatString = " She has";
+                    imgFormatString = ", she has";
 
                 if (userPrompt.Contains("holding"))
                 {
-                    imgFormatString = imgFormatString + " holding";
+                    imgFormatString = imgFormatString + ", holding ";
                 }
             }
 
-            string imgPrompt = $"A 25 year old anime woman smiling, looking into the camera, long hair, blonde hair, blue eyes{timeOfDayStr}"; // POSITIVE PROMPT - put what you want the image to look like generally. The AI will put its own prompt after this.
-            string imgNegPrompt = $"(worst quality, low quality:1.4), 3d, cgi, 3d render, naked, nude"; // NEGATIVE PROMPT HERE - put what you don't want to see
+            string imgPrompt = $"1girl, colorful, highres, woman, smile, dark green eyes, mint green hair, medium breasts, short hair, facing viewer, looking at viewer, solo, {timeOfDayStr}, <lora:thickerLinesAnimeStyle_loraVersion:1>"; // POSITIVE PROMPT - put what you want the image to look like generally. The AI will put its own prompt after this.
+            string imgNegPrompt = $"easynegative, badhandv4, missing fingers, extra fingers, bad anatomy, (worst quality, low quality:1.4), 3d, cgi, 3d render, naked, nude"; // NEGATIVE PROMPT HERE - put what you don't want to see
 
             //if (Msg.Author == GlobalConfig.Server.Owner) // only owner
             imgPrompt = $"{imgPrompt}, {llmPrompt}";
