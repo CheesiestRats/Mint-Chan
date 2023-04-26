@@ -1250,10 +1250,16 @@ namespace Mint_Chan
                 { "prompt", imgPrompt },
                 { "negative_prompt", imgNegPrompt},
                 { "steps", 20 },
-                { "height", 688 },
+                { "height", 512 },
                 { "send_images", true },
                 { "sampler_name", "DDIM" },
                 { "override_settings", overrideSettings },
+                { "cfg_scale", 10 },
+                { "enable_hr", true},
+                { "denoising_strength", 0.7 },
+                { "hr_scale", 2 },
+
+
             };
 
             // here are the json tags you can send to the stable diffusion image generator
